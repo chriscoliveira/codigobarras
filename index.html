@@ -1,14 +1,554 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Gerador de Código de Barras</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jsbarcode/3.11.6/JsBarcode.all.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
-<script src="https://cdn.jsdelivr.net/npm/jsbarcode"></script>
+    :root {
+      --bg: #0f1117;
+      --surface: #1a1d27;
+      --card: #21253a;
+      --border: #2e3352;
+      --accent: #4f6ef7;
+      --accent2: #7c3aed;
+      --text: #e8eaf6;
+      --muted: #8892b0;
+      --success: #22c55e;
+      --danger: #ef4444;
+      --radius: 10px;
+      --font-mono: 'Courier New', monospace;
+      --font: 'Segoe UI', system-ui, sans-serif;
+    }
 
-<input id="valor" placeholder="Digite o código">
-<button onclick="gerar()">Gerar</button>
+    body {
+      font-family: var(--font);
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 32px 16px 64px;
+    }
 
-<svg id="barcode"></svg>
+    header {
+      text-align: center;
+      margin-bottom: 36px;
+    }
+
+    header h1 {
+      font-size: 2rem;
+      font-weight: 700;
+      letter-spacing: -0.5px;
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    header p {
+      color: var(--muted);
+      margin-top: 6px;
+      font-size: 0.95rem;
+    }
+
+    .container {
+      width: 100%;
+      max-width: 780px;
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 24px;
+    }
+
+    label {
+      display: block;
+      font-size: 0.82rem;
+      font-weight: 600;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      margin-bottom: 8px;
+    }
+
+    textarea {
+      width: 100%;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      color: var(--text);
+      font-family: var(--font-mono);
+      font-size: 0.88rem;
+      padding: 12px 14px;
+      resize: vertical;
+      min-height: 100px;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+
+    textarea:focus { border-color: var(--accent); }
+
+    .hint {
+      color: var(--muted);
+      font-size: 0.78rem;
+      margin-top: 6px;
+    }
+
+    .options-row {
+      display: flex;
+      gap: 16px;
+      flex-wrap: wrap;
+      align-items: flex-end;
+      margin-top: 16px;
+    }
+
+    .opt-group {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      flex: 1;
+      min-width: 140px;
+    }
+
+    select, input[type="number"] {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      color: var(--text);
+      font-family: var(--font);
+      font-size: 0.9rem;
+      padding: 9px 12px;
+      outline: none;
+      transition: border-color 0.2s;
+      width: 100%;
+    }
+
+    select:focus, input[type="number"]:focus { border-color: var(--accent); }
+
+    .checkbox-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-top: 2px;
+    }
+
+    input[type="checkbox"] {
+      width: 16px; height: 16px;
+      accent-color: var(--accent);
+      cursor: pointer;
+    }
+
+    .checkbox-row span {
+      font-size: 0.88rem;
+      color: var(--muted);
+    }
+
+    .btn-row {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+      margin-top: 20px;
+    }
+
+    button {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      font-family: var(--font);
+      font-size: 0.9rem;
+      font-weight: 600;
+      padding: 10px 20px;
+      border-radius: 8px;
+      border: none;
+      cursor: pointer;
+      transition: opacity 0.15s, transform 0.1s;
+    }
+
+    button:active { transform: scale(0.97); }
+    button:hover { opacity: 0.9; }
+
+    .btn-primary {
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      color: #fff;
+    }
+
+    .btn-outline {
+      background: transparent;
+      border: 1px solid var(--border);
+      color: var(--text);
+    }
+
+    .btn-success {
+      background: var(--success);
+      color: #fff;
+    }
+
+    .btn-danger {
+      background: transparent;
+      border: 1px solid var(--danger);
+      color: var(--danger);
+      font-size: 0.8rem;
+      padding: 6px 12px;
+    }
+
+    /* Preview area */
+    #preview-section { display: none; }
+
+    .preview-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 16px;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+
+    .preview-header h2 {
+      font-size: 1rem;
+      font-weight: 600;
+      color: var(--text);
+    }
+
+    .preview-count {
+      font-size: 0.82rem;
+      color: var(--muted);
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 3px 12px;
+    }
+
+    #barcodes-container {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .barcode-item {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 16px 20px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      flex-wrap: wrap;
+    }
+
+    .barcode-item.error {
+      border-color: var(--danger);
+    }
+
+    .barcode-wrap {
+      background: #fff;
+      border-radius: 6px;
+      padding: 8px 12px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    .barcode-wrap svg {
+      display: block;
+      /* 7cm × 1.5cm at 96dpi ≈ 265 × 57px — we scale via viewBox */
+      width: 265px;
+      height: 57px;
+    }
+
+    .barcode-meta {
+      flex: 1;
+      min-width: 140px;
+    }
+
+    .barcode-meta .barcode-value {
+      font-family: var(--font-mono);
+      font-size: 0.95rem;
+      font-weight: 700;
+      color: var(--text);
+      word-break: break-all;
+    }
+
+    .barcode-meta .barcode-type {
+      font-size: 0.75rem;
+      color: var(--muted);
+      margin-top: 3px;
+    }
+
+    .error-msg {
+      color: var(--danger);
+      font-size: 0.82rem;
+      margin-top: 4px;
+    }
+
+    #error-banner {
+      display: none;
+      background: rgba(239,68,68,0.1);
+      border: 1px solid var(--danger);
+      border-radius: 8px;
+      padding: 12px 16px;
+      color: var(--danger);
+      font-size: 0.85rem;
+      margin-top: 12px;
+    }
+
+    @media (max-width: 520px) {
+      .barcode-wrap svg { width: 200px; height: 43px; }
+      .barcode-item { flex-direction: column; align-items: flex-start; }
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>Gerador de Código de Barras</h1>
+  <p>Cole os dados, escolha o formato e exporte em PDF</p>
+</header>
+
+<div class="container">
+
+  <!-- Input card -->
+  <div class="card">
+    <label for="input-data">Dados (um por linha)</label>
+    <textarea id="input-data" placeholder="123456789012&#10;PRODUTO-ABC&#10;7891234567890&#10;..."></textarea>
+    <p class="hint">Cada linha vira um código de barras separado.</p>
+
+    <div class="options-row">
+      <div class="opt-group">
+        <label for="format-select">Formato</label>
+        <select id="format-select">
+          <option value="CODE128">CODE 128 (qualquer texto)</option>
+          <option value="EAN13">EAN-13 (13 dígitos)</option>
+          <option value="EAN8">EAN-8 (8 dígitos)</option>
+          <option value="UPC">UPC-A (12 dígitos)</option>
+          <option value="CODE39">CODE 39</option>
+          <option value="ITF14">ITF-14 (14 dígitos)</option>
+          <option value="MSI">MSI</option>
+          <option value="pharmacode">Pharmacode</option>
+        </select>
+      </div>
+
+      <div class="opt-group">
+        <label>Mostrar texto</label>
+        <div class="checkbox-row">
+          <input type="checkbox" id="show-text" checked />
+          <span>Exibir valor abaixo do código</span>
+        </div>
+      </div>
+    </div>
+
+    <div id="error-banner"></div>
+
+    <div class="btn-row">
+      <button class="btn-primary" onclick="generate()">
+        ▶ Gerar Códigos
+      </button>
+      <button class="btn-outline" onclick="clearAll()">
+        ✕ Limpar
+      </button>
+    </div>
+  </div>
+
+  <!-- Preview card -->
+  <div class="card" id="preview-section">
+    <div class="preview-header">
+      <h2>Pré-visualização</h2>
+      <span class="preview-count" id="count-label"></span>
+      <button class="btn-success" onclick="exportPDF()">
+        ⬇ Exportar PDF
+      </button>
+    </div>
+    <div id="barcodes-container"></div>
+  </div>
+
+</div>
 
 <script>
-function gerar() {
-    let valor = document.getElementById("valor").value;
-    JsBarcode("#barcode", valor);
-}
+  const { jsPDF } = window.jspdf;
+
+  // 7cm × 1.5cm in mm
+  const BAR_W_MM = 70;
+  const BAR_H_MM = 15;
+  const PAGE_MARGIN = 15; // mm
+
+  function generate() {
+    const raw = document.getElementById('input-data').value;
+    const lines = raw.split('\n').map(l => l.trim()).filter(Boolean);
+    const fmt   = document.getElementById('format-select').value;
+    const showText = document.getElementById('show-text').checked;
+    const container = document.getElementById('barcodes-container');
+    const errorBanner = document.getElementById('error-banner');
+
+    errorBanner.style.display = 'none';
+    container.innerHTML = '';
+
+    if (!lines.length) {
+      errorBanner.textContent = 'Por favor, insira pelo menos um dado.';
+      errorBanner.style.display = 'block';
+      return;
+    }
+
+    let hasErrors = false;
+
+    lines.forEach((val, i) => {
+      const item = document.createElement('div');
+      item.className = 'barcode-item';
+
+      const meta = document.createElement('div');
+      meta.className = 'barcode-meta';
+      meta.innerHTML = `<div class="barcode-value">${escHtml(val)}</div>
+                        <div class="barcode-type">${fmt} · linha ${i + 1}</div>`;
+
+      const wrap = document.createElement('div');
+      wrap.className = 'barcode-wrap';
+
+      const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+      svg.setAttribute('id', `bc-${i}`);
+      wrap.appendChild(svg);
+
+      try {
+        JsBarcode(svg, val, {
+          format: fmt,
+          displayValue: showText,
+          width: 2,
+          height: 60,
+          margin: 6,
+          fontSize: 13,
+          background: '#ffffff',
+          lineColor: '#000000',
+          textMargin: 3,
+        });
+        // Fix SVG to always render at 7cm × 1.5cm on screen
+        const vb = svg.getAttribute('viewBox') || `0 0 ${svg.getAttribute('width')} ${svg.getAttribute('height')}`;
+        svg.setAttribute('viewBox', vb);
+        svg.removeAttribute('width');
+        svg.removeAttribute('height');
+      } catch (e) {
+        item.classList.add('error');
+        const err = document.createElement('div');
+        err.className = 'error-msg';
+        err.textContent = `⚠ Valor inválido para ${fmt}: ${e.message || 'formato incompatível'}`;
+        meta.appendChild(err);
+        wrap.innerHTML = '<span style="color:#ef4444;font-size:0.8rem">Erro</span>';
+        hasErrors = true;
+      }
+
+      item.appendChild(wrap);
+      item.appendChild(meta);
+
+      // Remove individual button
+      const delBtn = document.createElement('button');
+      delBtn.className = 'btn-danger';
+      delBtn.textContent = '✕ Remover';
+      delBtn.onclick = () => {
+        item.remove();
+        updateCount();
+      };
+      item.appendChild(delBtn);
+
+      container.appendChild(item);
+    });
+
+    document.getElementById('preview-section').style.display = 'block';
+    updateCount();
+
+    if (hasErrors) {
+      errorBanner.textContent = 'Alguns valores são inválidos para o formato escolhido e foram marcados com erro. Tente CODE 128 para texto livre.';
+      errorBanner.style.display = 'block';
+    }
+  }
+
+  function updateCount() {
+    const total = document.querySelectorAll('#barcodes-container .barcode-item:not(.error)').length;
+    const errors = document.querySelectorAll('#barcodes-container .barcode-item.error').length;
+    let label = `${total} código${total !== 1 ? 's' : ''}`;
+    if (errors) label += ` · ${errors} com erro`;
+    document.getElementById('count-label').textContent = label;
+  }
+
+  function clearAll() {
+    document.getElementById('input-data').value = '';
+    document.getElementById('barcodes-container').innerHTML = '';
+    document.getElementById('preview-section').style.display = 'none';
+    document.getElementById('error-banner').style.display = 'none';
+  }
+
+  async function exportPDF() {
+    const items = document.querySelectorAll('#barcodes-container .barcode-item:not(.error)');
+    if (!items.length) { alert('Nenhum código válido para exportar.'); return; }
+
+    const doc = new jsPDF({ unit: 'mm', format: 'a4' });
+    const pageW = doc.internal.pageSize.getWidth();
+    const pageH = doc.internal.pageSize.getHeight();
+
+    const x = (pageW - BAR_W_MM) / 2; // centralizado
+    let y = PAGE_MARGIN;
+    const gap = 8; // mm entre códigos
+    const rowH = BAR_H_MM + gap;
+
+    for (let i = 0; i < items.length; i++) {
+      if (i > 0 && y + BAR_H_MM > pageH - PAGE_MARGIN) {
+        doc.addPage();
+        y = PAGE_MARGIN;
+      }
+
+      const svg = items[i].querySelector('svg');
+      if (!svg) continue;
+
+      // Serialize SVG → data URL
+      const svgData = new XMLSerializer().serializeToString(svg);
+      const svgBlob = new Blob([svgData], { type: 'image/svg+xml;charset=utf-8' });
+      const url = URL.createObjectURL(svgBlob);
+
+      await new Promise(resolve => {
+        const img = new Image();
+        img.onload = () => {
+          // Draw image at 7cm × 1.5cm
+          doc.addImage(img, 'PNG', x, y, BAR_W_MM, BAR_H_MM);
+          URL.revokeObjectURL(url);
+          resolve();
+        };
+        img.onerror = () => { URL.revokeObjectURL(url); resolve(); };
+
+        // Convert SVG → canvas → PNG for better compat
+        const canvas = document.createElement('canvas');
+        const DPR = 4; // high resolution
+        canvas.width  = Math.round(BAR_W_MM * DPR * 3.7795); // mm→px at 96dpi × DPR
+        canvas.height = Math.round(BAR_H_MM * DPR * 3.7795);
+        const ctx = canvas.getContext('2d');
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+        const img2 = new Image();
+        img2.onload = () => {
+          ctx.drawImage(img2, 0, 0, canvas.width, canvas.height);
+          doc.addImage(canvas.toDataURL('image/png'), 'PNG', x, y, BAR_W_MM, BAR_H_MM);
+          URL.revokeObjectURL(url);
+          resolve();
+        };
+        img2.onerror = () => { URL.revokeObjectURL(url); resolve(); };
+        img2.src = 'data:image/svg+xml;base64,' + btoa(unescape(encodeURIComponent(svgData)));
+      });
+
+      y += rowH;
+    }
+
+    doc.save('codigos-de-barra.pdf');
+  }
+
+  function escHtml(str) {
+    return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  }
 </script>
+</body>
+</html>
