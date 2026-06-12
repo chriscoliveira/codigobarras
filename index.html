@@ -1,0 +1,14 @@
+
+<script src="https://cdn.jsdelivr.net/npm/jsbarcode"></script>
+
+<input id="valor" placeholder="Digite o código">
+<button onclick="gerar()">Gerar</button>
+
+<svg id="barcode"></svg>
+
+<script>
+function gerar() {
+    let valor = document.getElementById("valor").value;
+    JsBarcode("#barcode", valor);
+}
+</script>
